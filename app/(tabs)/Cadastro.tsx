@@ -1,18 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, Button, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
 
-export default function LoginScreen() {
-  const navigation = useNavigation<any>();
-  const [modoCadastro, setModoCadastro] = useState(false);
+export default function Cadastro({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-
-  useEffect(() => {
-    setEmail('');
-    setSenha('');
-  }, [modoCadastro]);
 
   const salvarCadastro = async () => {
     if (!email || !senha) {
@@ -23,56 +15,37 @@ export default function LoginScreen() {
     const dados = { email, senha };
     await AsyncStorage.setItem('usuario', JSON.stringify(dados));
     Alert.alert('Sucesso', 'Cadastro realizado com sucesso!');
-    setModoCadastro(false);
-  };
-
-  const realizarLogin = async () => {
-    const dadosSalvos = await AsyncStorage.getItem('usuario');
-    if (!dadosSalvos) {
-      Alert.alert('Erro', 'Nenhum usuário cadastrado.');
-      return;
-    }
-
-    const { email: emailSalvo, senha: senhaSalva } = JSON.parse(dadosSalvos);
-    if (email === emailSalvo && senha === senhaSalva) {
-      navigation.navigate('Filmes');
-    } else {
-      Alert.alert('Erro', 'Email ou senha incorretos.');
-    }
+    navigation.replace('Login'); // ou `navigation.goBack()` se preferir
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>{modoCadastro ? 'Cadastro' : 'Login'}</Text>
+      <Text style={styles.titulo}>Cadastro</Text>
 
       <TextInput
         placeholder="Email"
         placeholderTextColor="#5E3023"
         value={email}
         onChangeText={setEmail}
-        style={styles.input}
         keyboardType="email-address"
         autoCapitalize="none"
+        style={styles.input}
       />
+
       <TextInput
         placeholder="Senha"
         placeholderTextColor="#5E3023"
         value={senha}
         onChangeText={setSenha}
-        style={styles.input}
         secureTextEntry
+        style={styles.input}
       />
 
-      {modoCadastro ? (
-        <Button title="Cadastrar" color="#5E3023" onPress={salvarCadastro} />
-      ) : (
-        <Button title="Entrar" color="#5E3023" onPress={realizarLogin} />
-      )}
-
-      <TouchableOpacity onPress={() => setModoCadastro(!modoCadastro)}>
-        <Text style={styles.link}>
-          {modoCadastro ? 'Já tem conta? Faça login' : 'Não tem conta? Cadastre-se'}
-        </Text>
+      <TouchableOpacity style={styles.botao} onPress={salvarCadastro}>
+        <Text style={styles.textoBotao}>Cadastrar</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.botaoVoltar} onPress={() => navigation.goBack()}>
+        <Text style={styles.textoBotaoVoltar}>Voltar para o Login</Text>
       </TouchableOpacity>
     </View>
   );
@@ -111,13 +84,28 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  link: {
-    marginTop: 22,
+  botao: {
+    backgroundColor: '#5E3023',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  textoBotao: {
     color: '#FFD166',
-    textAlign: 'center',
-    fontSize: 17,
     fontWeight: 'bold',
-    textDecorationLine: 'underline',
-    letterSpacing: 0.5,
+    fontSize: 18,
+  },
+  botaoVoltar: {
+    backgroundColor: '#FFD166',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  textoBotaoVoltar: {
+    color: '#5E3023',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
