@@ -1,17 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 export default function Favoritos() {
   const navigation = useNavigation<any>();
   const [favoritos, setFavoritos] = useState<any[]>([]);
   const [carregando, setCarregando] = useState(true);
 
-  useEffect(() => {
-    carregarFavoritos();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      carregarFavoritos();
+    }, [])
+  );
 
   const carregarFavoritos = async () => {
     setCarregando(true);

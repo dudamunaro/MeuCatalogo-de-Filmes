@@ -3,10 +3,10 @@ import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ActivityIndi
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
-// Substitua pelo caminho da sua logo local ou uma URL
-const LOGO = require('../../assets/images/Logo.webp'); // Ajuste o caminho conforme necessário
+
+const LOGO = require('../../assets/images/Logo.webp'); 
 
 export default function Filmes() {
   const navigation = useNavigation<any>();
@@ -15,6 +15,7 @@ export default function Filmes() {
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [estrelas, setEstrelas] = useState<{ [key: string]: number }>({});
+  const [erro, setErro] = useState('');
 
   useEffect(() => {
     buscarFilmes();
@@ -22,12 +23,20 @@ export default function Filmes() {
     carregarEstrelas();
   }, []);
 
+  // Atualiza favoritos sempre que a tela ganha foco
+  useFocusEffect(
+    React.useCallback(() => {
+      carregarFavoritos();
+    }, [])
+  );
+
   const buscarFilmes = async () => {
     try {
+      setErro('');
       const response = await axios.get('https://api.tvmaze.com/shows');
       setFilmes(response.data.slice(0, 50)); // Pega só os 50 primeiros
     } catch (error) {
-      console.error('Erro ao buscar filmes:', error);
+      setErro('Erro ao buscar filmes. Tente novamente mais tarde.');
     } finally {
       setCarregando(false);
     }
@@ -37,6 +46,8 @@ export default function Filmes() {
     const data = await AsyncStorage.getItem('favoritos');
     if (data) {
       setFavoritos(JSON.parse(data).map((id: any) => id.toString()));
+    } else {
+      setFavoritos([]);
     }
   };
 
@@ -52,15 +63,31 @@ export default function Filmes() {
     await AsyncStorage.setItem('estrelas', JSON.stringify(novoEstado));
   };
 
-  const alternarFavorito = async (id: string) => {
-    let atualizados;
-    if (favoritos.includes(id)) {
-      atualizados = favoritos.filter(favId => favId !== id);
+  // Função para favoritar/desfavoritar e persistir detalhes
+  const alternarFavorito = async (id: string, filmeObj?: any) => {
+    // Carrega favoritos atuais
+    const favoritosSalvos = await AsyncStorage.getItem('favoritos');
+    let favoritosArray = favoritosSalvos ? JSON.parse(favoritosSalvos) : [];
+
+    // Carrega detalhes atuais
+    const detalhesSalvos = await AsyncStorage.getItem('favoritosDetalhes');
+    let detalhesArray = detalhesSalvos ? JSON.parse(detalhesSalvos) : [];
+
+    if (favoritosArray.includes(id)) {
+      // Remover dos favoritos
+      favoritosArray = favoritosArray.filter((favId: string) => favId !== id);
+      detalhesArray = detalhesArray.filter((item: any) => item.id.toString() !== id);
     } else {
-      atualizados = [...favoritos, id];
+      // Adicionar aos favoritos
+      favoritosArray.push(id);
+      const filmeSelecionado = filmeObj || filmes.find(f => f.id.toString() === id);
+      if (filmeSelecionado && !detalhesArray.some((item: any) => item.id === filmeSelecionado.id)) {
+        detalhesArray.push(filmeSelecionado);
+      }
     }
-    setFavoritos(atualizados);
-    await AsyncStorage.setItem('favoritos', JSON.stringify(atualizados));
+    setFavoritos(favoritosArray);
+    await AsyncStorage.setItem('favoritos', JSON.stringify(favoritosArray));
+    await AsyncStorage.setItem('favoritosDetalhes', JSON.stringify(detalhesArray));
   };
 
   const filmesFiltrados = filmes.filter(f =>
@@ -106,7 +133,7 @@ export default function Filmes() {
             {renderEstrelas(item.id.toString())}
           </View>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => alternarFavorito(item.id.toString())}>
+        <TouchableOpacity onPress={() => alternarFavorito(item.id.toString(), item)}>
           <Ionicons
             name={isFavorito ? 'heart' : 'heart-outline'}
             size={28}
@@ -121,6 +148,14 @@ export default function Filmes() {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#FFD166" />
+      </View>
+    );
+  }
+
+  if (erro) {
+    return (
+      <View style={styles.container}>
+        <Text style={{ color: '#FFD166', textAlign: 'center', marginTop: 40 }}>{erro}</Text>
       </View>
     );
   }
@@ -149,12 +184,16 @@ export default function Filmes() {
         </TouchableOpacity>
       </View>
       <Text style={styles.sugestoes}>Sugestões de filmes</Text>
-      <FlatList
-        data={filmesFiltrados}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 40 }}
-      />
+      {filmesFiltrados.length === 0 ? (
+        <Text style={{ color: '#F4F1DE', textAlign: 'center', marginTop: 40 }}>Nenhum item encontrado.</Text>
+      ) : (
+        <FlatList
+          data={filmesFiltrados}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 40 }}
+        />
+      )}
     </View>
   );
 }
